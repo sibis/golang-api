@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	// postgres driver
 	_ "github.com/lib/pq"
 )
 
@@ -45,12 +44,12 @@ type Product struct {
 }
 
 func (d *Db) GetProductByID(id int) Product {
-	stmt, err := d.Prepare("SELECT * FROM users WHERE id=$1")
+	stmt, err := d.Prepare("SELECT id,name,price FROM products WHERE id=$1")
 	if err != nil {
 		fmt.Println("GetProductById Err : ", err)
 	}
 
-	rows, err := stmt.Query(name)
+	rows, err := stmt.Query(id)
 	if err != nil {
 		fmt.Println("Query fetch err: ", err)
 	}
@@ -58,9 +57,60 @@ func (d *Db) GetProductByID(id int) Product {
 	var r Product
 	for rows.Next() {
 		if err := rows.Scan(
-			&r.Id,
+			&r.ID,
 			&r.Name,
 			&r.Price,
+		); err != nil {
+			fmt.Println("Error while scanning rows: ", err)
+		}
+	}
+	return r
+}
+
+func (d *Db) GetProducts() []Product {
+	stmt, err := d.Prepare("SELECT * FROM products")
+	if err != nil {
+		fmt.Println("GetProductsLists Err : ", err)
+	}
+
+	rows, err := stmt.Query()
+	if err != nil {
+		fmt.Println("Query fetch err: ", err)
+	}
+
+	var r Product
+	result := []Product{}
+	for rows.Next() {
+		if err := rows.Scan(
+			&r.ID,
+			&r.Name,
+			&r.Price,
+		); err != nil {
+			fmt.Println("Error while scanning rows: ", err)
+		}
+		result = append(result, r)
+	}
+	return result
+}
+
+func (d *Db) CreateProduct(name string, price float64) Product {
+	stmt, err := d.Prepare("INSERT INTO products(name, price) VALUES($1, $2) RETURNING id")
+	if err != nil {
+		fmt.Println("CreateProduct Err : ", err)
+	}
+
+	row, err := stmt.Query(name, price)
+	if err != nil {
+		fmt.Println("Query fetch err: ", err)
+	}
+
+	var r Product
+	r.Price = price
+	r.Name = name
+
+	for row.Next() {
+		if err := row.Scan(
+			&r.ID,
 		); err != nil {
 			fmt.Println("Error while scanning rows: ", err)
 		}
